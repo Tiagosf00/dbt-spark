@@ -401,32 +401,24 @@
 
 {% macro spark__alter_relation_add_remove_columns(relation, add_columns, remove_columns) %}
 
+  {% if add_columns %}
+    {% set sql -%}
+      alter {{ relation.type }} {{ relation }} add column
+      {% for column in add_columns %}
+        {{ column.name }} {{ column.data_type }}{{ ',' if not loop.last }}
+      {% endfor %}
+    {%- endset -%}
+    {% do run_query(sql) %}
+  {% endif %}
+
   {% if remove_columns %}
-    {% if relation.is_delta %}
-      {% set platform_name = 'Delta Lake' %}
-    {% elif relation.is_iceberg %}
-      {% set platform_name = 'Iceberg' %}
-    {% else %}
-      {% set platform_name = 'Apache Spark' %}
-    {% endif %}
-    {{ exceptions.raise_compiler_error(platform_name + ' does not support dropping columns from tables') }}
+    {% set sql -%}
+      alter {{ relation.type }} {{ relation }} drop column
+      {% for column in remove_columns %}
+        {{ column.name }}{{ ',' if not loop.last }}
+      {% endfor %}
+    {%- endset -%}
+    {% do run_query(sql) %}
   {% endif %}
-
-  {% if add_columns is none %}
-    {% set add_columns = [] %}
-  {% endif %}
-
-  {% set sql -%}
-
-     alter {{ relation.type }} {{ relation }}
-
-       {% if add_columns %} add columns {% endif %}
-            {% for column in add_columns %}
-               {{ column.name }} {{ column.data_type }}{{ ',' if not loop.last }}
-            {% endfor %}
-
-  {%- endset -%}
-
-  {% do run_query(sql) %}
 
 {% endmacro %}
